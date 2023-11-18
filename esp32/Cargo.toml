@@ -1,0 +1,12 @@
+[package]
+name = "{{project-name}}"
+version = "0.0.0"
+authors = ["{{authors}}"]
+edition = "2021"
+
+[dependencies]
+hal = { package = "esp32-hal", version = "0.16" }
+esp-backtrace = { version = "0.9", features = ["esp32", "panic-handler", "print-uart"] }
+esp-println = { version = "0.7", features = ["esp32","log"] }
+log = { version = "0.4" }
+embedded-hal = "0.2"
