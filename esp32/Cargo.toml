@@ -10,3 +10,7 @@ esp-backtrace = { version = "0.9", features = ["esp32", "panic-handler", "print-
 esp-println = { version = "0.7", features = ["esp32","log"] }
 log = { version = "0.4" }
 embedded-hal = "0.2"
+{% if ssd1306 %}
+ssd1306 = "0.8"
+fugit = "0.3"
+{% endif %}

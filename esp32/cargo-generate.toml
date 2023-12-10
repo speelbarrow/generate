@@ -1,0 +1,4 @@
+[placeholders.ssd1306]
+type = "bool"
+prompt = "Initialize SSD1306 OLED display?"
+default = false
