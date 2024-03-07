@@ -1,2 +1,2 @@
 [template]
-sub_templates = ["esp32"]
+sub_templates = ["esp32", "leetcode"]
