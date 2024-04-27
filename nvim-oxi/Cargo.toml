@@ -1,0 +1,12 @@
+[package]
+name = "{{project-name}}"
+version = "0.0.0"
+authors = ["{{authors}}"]
+edition = "2021"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nvim-oxi = { version = "0.4.2", features = ["neovim-nightly"] }
