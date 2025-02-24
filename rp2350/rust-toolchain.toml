@@ -1,0 +1,5 @@
+[toolchain]
+targets = [
+{% if arch != "arm" %}    "riscv32imac-unknown-none-elf", 
+{% endif %}{% if arch != "risc" %}    "thumbv8m.main-none-eabihf",
+{% endif %}]

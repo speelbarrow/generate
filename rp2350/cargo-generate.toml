@@ -1,0 +1,13 @@
+[hooks]
+pre = ["pre.rhai"]
+
+[placeholders.library]
+choices = ["embassy (async)", "rp-hal (sync)", "Both"]
+default = "embassy (async)"
+prompt = "Select hardware platform to support"
+
+[conditional.'library == "rp-hal (sync)"'.placeholders.architecture]
+choices = ["ARMv8", "RISC-V", "Both"]
+default = "ARMv8"
+prompt = "Select processor architecture to support"
+type = "string"

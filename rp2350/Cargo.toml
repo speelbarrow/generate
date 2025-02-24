@@ -1,0 +1,89 @@
+[package]
+name = "{{project-name}}"
+version = "0.0.0"
+authors = ["{{authors}}"]
+edition = "2024"
+
+[[bin]]
+{% if lib != "both" %}name = "main"
+path = "src/main.rs"
+{% else %}name = "sync"
+harness = false
+
+[[bin]]
+name = "async"
+harness = false
+
+[lib]
+{% endif %}harness = false
+
+[dependencies]
+{% if arch == "arm" and lib != "sync" %}cortex-m-rt = "0.7.5"
+{% endif %}defmt = "0.3.10"
+defmt-rtt = "0.4.1"
+{% if arch == "risc" %}panic-halt = "1.0.0"
+{% endif %}{% if arch == "both" and lib != "sync" %}
+[target.'cfg(target_arch = "arm")'.dependencies]
+cortex-m-rt = "0.7.5"
+{% endif %}{% if arch == "both" %}
+[target.'cfg(target_arch = "riscv32")'.dependencies]
+panic-halt = "1.0.0"
+{% endif %}{% if lib != async %}
+[dependencies.embedded-hal]
+features = ["defmt-03"]
+version = "1.0.0"
+{% endif %}{% if arch == "both" and lib != "sync" %}
+[target.'cfg(target_arch = "arm")'.dependencies.embassy-executor]
+{% elsif lib != "sync" %}
+[dependencies.embassy-executor]
+{% endif %}{% if lib != "sync" %}features = [
+    "arch-{% endif %}{% if arch == "risc" and lib != "sync" %}riscv32{% elsif lib != "sync" %}cortex-m{% endif %}{% if lib != "sync" %}",
+    "defmt",
+    "executor-thread",{% endif %}{% if arch != "risc" and lib != "sync" %}
+    "executor-interrupt",{% endif %}{% if lib != "sync" %}
+    "task-arena-size-98304",
+]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.7"
+{% endif %}{% if arch == "both" and lib != "sync" %}
+[target.'cfg(target_arch = "riscv32")'.dependencies.embassy-executor]
+features = [
+    "arch-riscv32",
+    "defmt",
+    "executor-thread",
+    "executor-interrupt",
+    "task-arena-size-98304",
+]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.7"
+{% endif %}{%if lib != "sync" %}
+[dependencies.embassy-rp]
+features = ["binary-info", "critical-section-impl", "defmt", "rp235xa", "time-driver"]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.4"
+
+[dependencies.embassy-time]
+features = ["defmt", "defmt-timestamp-uptime"]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.5"
+{% endif %}{% if arch == "arm" %}
+[dependencies.panic-probe]
+{% elsif arch == "both" %}
+[target.'cfg(target_arch = "arm")'.dependencies.panic-probe]
+{% endif %}{% if arch != "risc" %}features = ["print-defmt"]
+version = "0.3.2"
+{% endif %}{% if lib != "async" %}
+[dependencies.rp235x-hal]
+features = [
+    "binary-info",
+    "critical-section-impl",
+    "defmt",
+]
+version = "0.2.0"
+{% endif %}
+[build-dependencies]
+glob = "0.3.2"
