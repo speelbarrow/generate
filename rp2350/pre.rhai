@@ -12,6 +12,14 @@ let lib = switch variable::get("library") {
 };
 variable::set("lib", lib);
 
+let wifi = if variable::is_set("wifi") {
+    variable::get("wifi")
+} else {
+    let r = false;
+    variable::set("wifi", r);
+    r
+};
+
 if lib != "sync" && arch != "arm" {
     abort("RISC-V architecture is not supported by embassy.");
 }
@@ -26,4 +34,9 @@ if arch == "arm" {
     file::delete("riscv.x");
 } else if arch == "risc" {
     file::delete("memory.x");
+}
+
+if !wifi {
+    file::delete("43439A0.bin");
+    file::delete("43439A0_clm.bin");
 }

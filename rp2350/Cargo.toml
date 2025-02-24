@@ -11,7 +11,9 @@ path = "src/main.rs"
 harness = false
 
 [[bin]]
-name = "async"
+# Name cannot be `async` because it gets used as an `ident`.
+name = "Async"
+path = "src/bin/async.rs"
 harness = false
 
 [lib]
@@ -22,12 +24,25 @@ harness = false
 {% endif %}defmt = "0.3.10"
 defmt-rtt = "0.4.1"
 {% if arch == "risc" %}panic-halt = "1.0.0"
+{% endif %}{% if wifi %}static_cell = "2.1.0"
 {% endif %}{% if arch == "both" and lib != "sync" %}
 [target.'cfg(target_arch = "arm")'.dependencies]
 cortex-m-rt = "0.7.5"
 {% endif %}{% if arch == "both" %}
 [target.'cfg(target_arch = "riscv32")'.dependencies]
 panic-halt = "1.0.0"
+{% endif %}{% if wifi %}
+[dependencies.cyw43]
+features = ["defmt", "firmware-logs"]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.3.0"
+
+[dependencies.cyw43-pio]
+features = ["defmt"]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.3.0"
 {% endif %}{% if lib != async %}
 [dependencies.embedded-hal]
 features = ["defmt-03"]

@@ -11,3 +11,8 @@ choices = ["ARMv8", "RISC-V", "Both"]
 default = "ARMv8"
 prompt = "Select processor architecture to support"
 type = "string"
+
+[conditional.'library != "rp-hal (sync)"'.placeholders.wifi]
+default = false
+prompt = "Enable WiFi?"
+type = "bool"
