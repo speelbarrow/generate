@@ -1,2 +1,2 @@
 [template]
-sub_templates = ["leetcode", "nvim-oxi", "rp2350"]
+sub_templates = ["leetcode", "nvim-oxi", "rp235x"]

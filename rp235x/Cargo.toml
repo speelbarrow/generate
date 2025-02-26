@@ -73,6 +73,12 @@ features = [
 git = "https://github.com/embassy-rs/embassy"
 rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
 #"^0.7"
+{% endif %}{% if wifi %}
+[dependencies.embassy-net]
+features = ["defmt", "dhcpv4", "dns", "proto-ipv4", "tcp"]
+git = "https://github.com/embassy-rs/embassy"
+rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
+#"^0.6.1"
 {% endif %}{%if lib != "sync" %}
 [dependencies.embassy-rp]
 features = ["binary-info", "critical-section-impl", "defmt", "rp235xa", "time-driver"]
@@ -102,3 +108,12 @@ version = "0.2.0"
 {% endif %}
 [build-dependencies]
 glob = "0.3.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+
+[profile.dev]
+lto = true
+opt-level = "z"

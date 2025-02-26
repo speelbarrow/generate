@@ -1,10 +1,9 @@
+use glob::glob;
 use std::{
     env::var_os,
     fs::{read_to_string, write},
     path::PathBuf,
 };
-
-use glob::glob;
 
 fn main() {
     let out = &PathBuf::from(var_os("OUT_DIR").unwrap());
