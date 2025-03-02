@@ -104,7 +104,7 @@ features = [
     "critical-section-impl",
     "defmt",
 ]
-version = "0.2.0"
+version = "0.3.0"
 {% endif %}
 [build-dependencies]
 glob = "0.3.2"
