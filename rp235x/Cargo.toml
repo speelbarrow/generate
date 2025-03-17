@@ -34,63 +34,37 @@ panic-halt = "1.0.0"
 {% endif %}{% if wifi %}
 [dependencies.cyw43]
 features = ["defmt", "firmware-logs"]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.3.0"
+version = "0.3.0"
 
 [dependencies.cyw43-pio]
 features = ["defmt"]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.3.0"
+version = "0.3.0"
 {% endif %}{% if lib != async %}
 [dependencies.embedded-hal]
 features = ["defmt-03"]
 version = "1.0.0"
-{% endif %}{% if arch == "both" and lib != "sync" %}
-[target.'cfg(target_arch = "arm")'.dependencies.embassy-executor]
-{% elsif lib != "sync" %}
+{% endif %}{% if arch == "arm" and lib != "sync" %}
 [dependencies.embassy-executor]
-{% endif %}{% if lib != "sync" %}features = [
-    "arch-{% endif %}{% if arch == "risc" and lib != "sync" %}riscv32{% elsif lib != "sync" %}cortex-m{% endif %}{% if lib != "sync" %}",
-    "defmt",
-    "executor-thread",{% endif %}{% if arch != "risc" and lib != "sync" %}
-    "executor-interrupt",{% endif %}{% if lib != "sync" %}
-    "task-arena-size-98304",
-]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.7"
-{% endif %}{% if arch == "both" and lib != "sync" %}
-[target.'cfg(target_arch = "riscv32")'.dependencies.embassy-executor]
 features = [
-    "arch-riscv32",
+    "arch-cortex-m",
     "defmt",
     "executor-thread",
     "executor-interrupt",
     "task-arena-size-98304",
 ]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.7"
+version = "0.7.0"
 {% endif %}{% if wifi %}
 [dependencies.embassy-net]
 features = ["defmt", "dhcpv4", "dns", "proto-ipv4", "tcp"]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.6.1"
+version = "0.6.0"
 {% endif %}{%if lib != "sync" %}
 [dependencies.embassy-rp]
 features = ["binary-info", "critical-section-impl", "defmt", "rp235xa", "time-driver"]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.4"
+version = "0.3.1"
 
 [dependencies.embassy-time]
 features = ["defmt", "defmt-timestamp-uptime"]
-git = "https://github.com/embassy-rs/embassy"
-rev = "f3b98a8748ad5ef7761dccb2e935cecea9e1e707"
-#"^0.5"
+version = "0.4.0"
 {% endif %}{% if arch == "arm" %}
 [dependencies.panic-probe]
 {% elsif arch == "both" %}
