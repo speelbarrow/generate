@@ -38,7 +38,7 @@ version = "0.3.0"
 
 [dependencies.cyw43-pio]
 features = ["defmt"]
-version = "0.3.0"
+version = "0.4.0"
 {% endif %}{% if lib != async %}
 [dependencies.embedded-hal]
 features = ["defmt-03"]
@@ -60,7 +60,7 @@ version = "0.6.0"
 {% endif %}{%if lib != "sync" %}
 [dependencies.embassy-rp]
 features = ["binary-info", "critical-section-impl", "defmt", "rp235xa", "time-driver"]
-version = "0.3.1"
+version = "0.4.0"
 
 [dependencies.embassy-time]
 features = ["defmt", "defmt-timestamp-uptime"]
