@@ -21,8 +21,8 @@ harness = false
 
 [dependencies]
 {% if arch == "arm" and lib != "sync" %}cortex-m-rt = "0.7.5"
-{% endif %}defmt = "0.3.10"
-defmt-rtt = "0.4.1"
+{% endif %}defmt = "1.0.1"
+defmt-rtt = "1.0.0"
 {% if arch == "risc" %}panic-halt = "1.0.0"
 {% endif %}{% if wifi %}static_cell = "2.1.0"
 {% endif %}{% if arch == "both" and lib != "sync" %}
@@ -70,7 +70,7 @@ version = "0.4.0"
 {% elsif arch == "both" %}
 [target.'cfg(target_arch = "arm")'.dependencies.panic-probe]
 {% endif %}{% if arch != "risc" %}features = ["print-defmt"]
-version = "0.3.2"
+version = "1.0.0"
 {% endif %}{% if lib != "async" %}
 [dependencies.rp235x-hal]
 features = [
