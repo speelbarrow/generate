@@ -1,0 +1,18 @@
+[package]
+name = "{{project-name}}"
+authors = ["{{authors}}"]
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+godot = "0.4.5"
+
+[build-dependencies]
+pathdiff = "0.2.3"
+
+[build-dependencies.gdext-gen]
+features = ["find_icons", "icons"]
+version = "0.1.1"
