@@ -10,4 +10,5 @@ config_version=5
 
 [application]
 
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/name="{{project-name}}"
+config/features=PackedStringArray("4.6", "Forward Plus")
