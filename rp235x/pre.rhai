@@ -8,7 +8,6 @@ variable::set("arch", arch);
 let lib = switch variable::get("library") {
     "embassy (async)" => "async",
     "rp-hal (sync)" => "sync",
-    "Both" => "both",
 };
 variable::set("lib", lib);
 
@@ -24,11 +23,8 @@ if lib != "sync" && arch != "arm" {
     abort("RISC-V architecture is not supported by embassy.");
 }
 
-if lib != "both" {
-    file::rename(`src/bin/${lib}.rs`, "src/main.rs");
-    file::delete("src/bin");
-    file::delete("src/lib.rs");
-}
+file::rename(`src/main/${lib}.rs`, "src/main.rs");
+file::delete("src/main");
 
 if arch == "arm" {
     file::delete("riscv.x");
@@ -37,6 +33,5 @@ if arch == "arm" {
 }
 
 if !wifi {
-    file::delete("43439A0.bin");
-    file::delete("43439A0_clm.bin");
+    file::delete("nvram_rp2040.bin");
 }

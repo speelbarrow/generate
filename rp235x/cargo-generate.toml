@@ -5,7 +5,7 @@ pre = ["pre.rhai"]
 exclude = ["*.bin"]
 
 [placeholders.library]
-choices = ["embassy (async)", "rp-hal (sync)", "Both"]
+choices = ["embassy (async)", "rp-hal (sync)"]
 default = "embassy (async)"
 prompt = "Select hardware platform to support"
 

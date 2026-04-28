@@ -1,8 +1,8 @@
 #![no_main]
 #![no_std]
 
-{% if wifi %}use cyw43::{JoinOptions, NetDriver, PowerManagementMode};
-use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
+{% if wifi %}use cyw43::{Aligned, A4, JoinOptions, NetDriver, PowerManagementMode, aligned_bytes};
+use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::{info, unwrap};
 {% else %}use defmt::info;
 {% endif %}use defmt_rtt as _;
@@ -16,7 +16,7 @@ use embassy_executor::Spawner;
         consts::{ID_RP_PROGRAM_NAME, TAG_RASPBERRY_PI},
         rp_cargo_version, rp_program_build_attribute, rp_program_description,
     },
-    {% if wifi %}bind_interrupts,
+    {% if wifi %}bind_interrupts, dma,
     {% endif %}gpio::{Level, Output},
 {% if wifi %}    peripherals::{DMA_CH0, PIO0, TRNG},
     pio::{InterruptHandler as PioIH, Pio},
@@ -42,13 +42,14 @@ pub static PICOTOOL_ENTRIES: [EntryAddr; 4] = [
 ];
 
 {% if wifi %}bind_interrupts!(struct Irqs {
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
     PIO0_IRQ_0 => PioIH<PIO0>;
     TRNG_IRQ => TrngIH<TRNG>;
 });
 
 #[embassy_executor::task]
 async fn cyw43_task(
-    runner: cyw43::Runner<'static, Output<'static>, PioSpi<'static, PIO0, 0, DMA_CH0>>,
+    runner: cyw43::Runner<'static, cyw43::SpiBus<Output<'static>, PioSpi<'static, PIO0, 0>>>,
 ) -> ! {
     runner.run().await
 }
@@ -76,23 +77,24 @@ async fn main({% if wifi %}spawner{% else %}_s{% endif %}: Spawner) {
             PioSpi::new(
                 &mut pio.common,
                 pio.sm0,
-                DEFAULT_CLOCK_DIVIDER,
+                RM2_CLOCK_DIVIDER,
                 pio.irq0,
                 Output::new(peripherals.PIN_25, Level::High),
                 peripherals.PIN_24,
                 peripherals.PIN_29,
-                peripherals.DMA_CH0,
+                dma::Channel::new(peripherals.DMA_CH0, Irqs),
             ),
-            include_bytes!("{% endif %}{% if wifi and lib == "both" %}../{% endif %}{% if wifi %}../43439A0.bin"),
+            &Aligned::<A4, _>(*cyw43_firmware::CYW43_43439A0),
             // `probe-rs download 43439A0.bin --binary-format bin --chip RP235x --base-address 0x10100000`
             // unsafe { core::slice::from_raw_parts(0x10100000 as *const u8, 230321) },
+            aligned_bytes!("{% endif %}{% if wifi and lib == "both" %}../{% endif %}{% if wifi %}../nvram_rp2040.bin"),
         )
         .await;
-        unwrap!(spawner.spawn(cyw43_task(runner)));
+        spawner.spawn(unwrap!(cyw43_task(runner)));
         (device, control)
     };
     control.init(
-        include_bytes!("{% endif %}{% if wifi and lib == "both" %}../{% endif %}{% if wifi %}../43439A0_clm.bin"),
+        cyw43_firmware::CYW43_43439A0_CLM
         // `probe-rs download 43439A0_clm.bin --binary-format bin --chip RP235x --base-address 0x10140000`
         // unsafe { core::slice::from_raw_parts(0x10140000 as *const u8, 4752) },
     ).await;
@@ -120,7 +122,7 @@ async fn main({% if wifi %}spawner{% else %}_s{% endif %}: Spawner) {
             RESOURCES.init(StackResources::new()),
             random().await,
         );
-        unwrap!(spawner.spawn(net_task(runner)));
+        spawner.spawn(unwrap!(net_task(runner)));
         stack
     };
 
