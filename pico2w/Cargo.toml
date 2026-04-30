@@ -53,6 +53,10 @@ features = [
 ]
 version = "0.10.0"
 {% endif %}{% if wifi %}
+[dependencies.embassy-futures]
+features = ["defmt"]
+version = "0.1.2"
+
 [dependencies.embassy-net]
 features = ["defmt", "dhcpv4", "dns", "proto-ipv4", "tcp"]
 version = "0.9.1"
@@ -63,7 +67,7 @@ features = [
   "critical-section-impl",
   "defmt",
   "rp235xa",
-  "time-driver"
+  "time-driver",
 ]
 version = "0.10.0"
 

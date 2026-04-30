@@ -7,7 +7,8 @@ use defmt::{info, unwrap};
 {% else %}use defmt::info;
 {% endif %}use defmt_rtt as _;
 use embassy_executor::Spawner;
-{% if wifi %}use embassy_net::{
+{% if wifi %}use embassy_futures::select::select;
+use embassy_net::{
     Config, StackResources
 };
 {% endif %}use embassy_rp::{
@@ -20,7 +21,7 @@ use embassy_executor::Spawner;
     {% endif %}gpio::{Level, Output},
 {% if wifi %}    peripherals::{DMA_CH0, PIO0, TRNG},
     pio::{InterruptHandler as PioIH, Pio},
-    trng::{InterruptHandler as TrngIH, Trng},
+    trng::{self, InterruptHandler as TrngIH, Trng},
 {% endif %}};
 use embassy_time::Timer;
 {% if arch == "risc" %}use panic_halt as _;
@@ -59,8 +60,8 @@ async fn net_task(mut runner: embassy_net::Runner<'static, NetDriver<'static>>) 
     runner.run().await
 }
 
-const SSID: &str = "";
-const PASS: &[u8] = b"";
+const SSID: &str = include_str!("../SSID");
+const PASS: &[u8] = include_bytes!("../PASS");
 {% endif %}#[embassy_executor::main]
 async fn main({% if wifi %}spawner{% else %}_s{% endif %}: Spawner) {
     let peripherals = embassy_rp::init(Default::default());
@@ -118,27 +119,41 @@ async fn main({% if wifi %}spawner{% else %}_s{% endif %}: Spawner) {
         SSID
     );
     
-    let mut rng = Trng::new(peripherals.TRNG, Irqs, Default::default());
-    let mut random = async || {
-        let mut buffer = [0; 8];
-        rng.fill_bytes(&mut buffer).await;
-        u64::from_le_bytes(buffer)
-    };
+    select(
+        async {
+            let mut rng = Trng::new(peripherals.TRNG, Irqs, {
+                let mut r = embassy_rp::trng::Config::default();
 
-    let stack = {
-        static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
-        let (stack, runner) = embassy_net::new(
-            device,
-            Config::dhcpv4(Default::default()),
-            RESOURCES.init(StackResources::new()),
-            random().await,
-        );
-        spawner.spawn(unwrap!(net_task(runner)));
-        stack
-    };
+                r.sample_count = 128;
 
-    stack.wait_link_up().await;
-    stack.wait_config_up().await;
+                r
+            });
+            let mut random = async || {
+                let mut buffer = [0; 8];
+                rng.fill_bytes(&mut buffer).await;
+                u64::from_le_bytes(buffer)
+            };
+            static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
+            let (stack, runner) = embassy_net::new(
+                device,
+                Config::dhcpv4(Default::default()),
+                RESOURCES.init(StackResources::new()),
+                random().await,
+            );
+            spawner.spawn(unwrap!(net_task(runner)));
+            stack.wait_link_up().await;
+            stack.wait_config_up().await;
+        },
+        async {
+            let mut state = true;
+            loop {
+                state = !state;
+                control.gpio_set(0, state).await;
+                Timer::after_millis(100).await;
+            }
+        },
+    )
+    .await;
     {% else %}let mut led = Output::new(peripherals.PIN_2, Level::High);
     {% endif %}
     loop {
