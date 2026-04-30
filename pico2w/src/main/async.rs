@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-{% if wifi %}use cyw43::{Aligned, A4, JoinOptions, NetDriver, PowerManagementMode, aligned_bytes};
+{% if wifi %}use cyw43::{JoinOptions, NetDriver, PowerManagementMode};
 use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::{info, unwrap};
 {% else %}use defmt::info;
@@ -84,19 +84,30 @@ async fn main({% if wifi %}spawner{% else %}_s{% endif %}: Spawner) {
                 peripherals.PIN_29,
                 dma::Channel::new(peripherals.DMA_CH0, Irqs),
             ),
-            &Aligned::<A4, _>(*cyw43_firmware::CYW43_43439A0),
-            // `probe-rs download 43439A0.bin --binary-format bin --chip RP235x --base-address 0x10100000`
-            // unsafe { core::slice::from_raw_parts(0x10100000 as *const u8, 230321) },
-            aligned_bytes!("{% endif %}{% if wifi and lib == "both" %}../{% endif %}{% if wifi %}../nvram_rp2040.bin"),
+            /*
+            probe-rs download 43439A0.bin --binary-format bin --chip RP235x --base-address 0x10100000
+
+            unsafe {
+                core::mem::transmute(core::slice::from_raw_parts(
+                    0x10100000 as *const u8,
+                    0x386a5,
+                ))
+            },
+            */
+            cyw43::aligned_bytes!("../43439A0.bin"),
+            cyw43::aligned_bytes!("../nvram_rp2040.bin"),
         )
         .await;
         spawner.spawn(unwrap!(cyw43_task(runner)));
         (device, control)
     };
     control.init(
-        cyw43_firmware::CYW43_43439A0_CLM
-        // `probe-rs download 43439A0_clm.bin --binary-format bin --chip RP235x --base-address 0x10140000`
-        // unsafe { core::slice::from_raw_parts(0x10140000 as *const u8, 4752) },
+        /*
+        probe-rs download 43439A0_clm.bin --binary-format bin --chip RP235x --base-address 0x10140000
+
+        unsafe { core::slice::from_raw_parts(0x10140000 as *const u8, 0x3d8) },
+        */
+        cyw43::aligned_bytes!("../43439A0_clm.bin"),
     ).await;
     control.set_power_management(PowerManagementMode::PowerSave).await;
     control.gpio_set(0, true).await;

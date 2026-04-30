@@ -2,10 +2,10 @@
 target = "{% if arch == "risc" %}riscv32imac-unknown-none-elf{% else %}thumbv8m.main-none-eabihf{% endif %}"
 
 [env]
-DEFMT_LOG = "debug"
+DEFMT_LOG = "info"
 
 {% if arch == "arm" %}[target.thumbv8m.main-none-eabihf]{% elsif arch == "risc" %}[target.riscv32imac-unknown-none-elf]{% else %}[target.'cfg(any(all(target_arch = "arm", target_os = "none"), all(target_arch = "riscv32", target_os = "none")))']{% endif %}
-runner = "probe-rs run --chip RP235x"
+runner = "probe-rs run --chip RP235x --preverify --verify --speed 24000 "
 #"elf2uf2-rs -d"
 #"picotool load -u -v -x -t elf"
 {% if arch != "both" %}rustflags = [

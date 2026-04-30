@@ -24,7 +24,7 @@ harness = false
 {% endif %}defmt = "1.0.1"
 defmt-rtt = "1.1.0"
 {% if arch == "risc" %}panic-halt = "1.0.0"
-{% endif %}{% if wifi %}static_cell = "2.1.0"
+{% endif %}{% if wifi %}static_cell = "2.1.1"
 {% endif %}{% if arch == "both" and lib != "sync" %}
 [target.'cfg(target_arch = "arm")'.dependencies]
 cortex-m-rt = "0.7.5"
@@ -36,10 +36,6 @@ panic-halt = "1.0.0"
 features = ["defmt", "firmware-logs"]
 version = "0.7.0"
 
-[dependencies.cyw43-firmware]
-features = ["wifi"]
-version = "0.1.0"
-
 [dependencies.cyw43-pio]
 features = ["defmt"]
 version = "0.10.0"
@@ -50,10 +46,10 @@ version = "1.0.0"
 {% endif %}{% if arch == "arm" and lib != "sync" %}
 [dependencies.embassy-executor]
 features = [
-    "defmt",
-    "executor-thread",
-    "executor-interrupt",
-    "platform-cortex-m",
+  "defmt",
+  "executor-thread",
+  "executor-interrupt",
+  "platform-cortex-m",
 ]
 version = "0.10.0"
 {% endif %}{% if wifi %}
@@ -62,7 +58,13 @@ features = ["defmt", "dhcpv4", "dns", "proto-ipv4", "tcp"]
 version = "0.9.1"
 {% endif %}{%if lib != "sync" %}
 [dependencies.embassy-rp]
-features = ["binary-info", "critical-section-impl", "defmt", "rp235xa", "time-driver"]
+features = [
+  "binary-info",
+  "critical-section-impl",
+  "defmt",
+  "rp235xa",
+  "time-driver"
+]
 version = "0.10.0"
 
 [dependencies.embassy-time]
@@ -76,11 +78,7 @@ version = "0.5.1"
 version = "1.0.0"
 {% endif %}{% if lib != "async" %}
 [dependencies.rp235x-hal]
-features = [
-    "binary-info",
-    "critical-section-impl",
-    "defmt",
-]
+features = ["binary-info", "critical-section-impl", "defmt"]
 version = "0.4.0"
 {% endif %}
 [build-dependencies]
