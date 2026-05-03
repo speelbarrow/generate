@@ -33,5 +33,8 @@ if arch == "arm" {
 }
 
 if !wifi {
+    file::delete("43439A0.bin");
+    file::delete("43439A0_clm.bin");
     file::delete("nvram_rp2040.bin");
+    file::delete("src/wifi.rs")
 }

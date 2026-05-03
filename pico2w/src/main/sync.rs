@@ -24,8 +24,8 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 #[rp235x_hal::entry]
 fn main() -> ! {
     let mut peripherals = Peripherals::take().unwrap();
-    let mut watchdog = Watchdog::new(peripherals.WATCHDOG);
 
+    let mut watchdog = Watchdog::new(peripherals.WATCHDOG);
     let clocks = init_clocks_and_plls(
         XTAL_FREQ_HZ,
         peripherals.XOSC,
@@ -36,13 +36,9 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
-
     let mut timer = Timer::new_timer0(peripherals.TIMER0, &mut peripherals.RESETS, &clocks);
 
-    // The single-cycle I/O block controls our GPIO pins
     let sio = Sio::new(peripherals.SIO);
-
-    // Set the pins to their default state
     let pins = Pins::new(
         peripherals.IO_BANK0,
         peripherals.PADS_BANK0,
@@ -50,14 +46,14 @@ fn main() -> ! {
         &mut peripherals.RESETS,
     );
 
-    // Configure GPIO2 as an output
-    let mut led_pin = pins.gpio2.into_push_pull_output();
-
+    let mut led = pins.gpio0.into_push_pull_output();
     loop {
-        led_pin.set_high().unwrap();
+        info!("led off!");
+        _ = led.set_low();
         timer.delay_ms(500);
-        info!("Hello, World!");
-        led_pin.set_low().unwrap();
+        
+        info!("led on!");
+        _ = led.set_high();
         timer.delay_ms(500);
     }
 }
