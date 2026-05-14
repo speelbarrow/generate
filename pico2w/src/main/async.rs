@@ -16,8 +16,7 @@ use embassy_rp::{
     {% if wifi %}bind_interrupts, dma,
     {% endif %}gpio::{Level, Output},
 {% if wifi %}    peripherals::{DMA_CH0, PIO0, TRNG},
-    pio::InterruptHandler as PioIH,
-    trng::InterruptHandler as TrngIH,
+    pio, trng,
 {% endif %}};
 use embassy_time::Timer;
 {% if arch == "risc" %}use panic_halt as _;
@@ -38,8 +37,8 @@ pub static PICOTOOL_ENTRIES: [EntryAddr; 4] = [
 {% if wifi %}
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
-    PIO0_IRQ_0 => PioIH<PIO0>;
-    TRNG_IRQ => TrngIH<TRNG>;
+    PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
+    TRNG_IRQ => trng::InterruptHandler<TRNG>;
 });
 {% endif %}
 #[embassy_executor::main]
