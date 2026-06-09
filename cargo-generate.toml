@@ -1,2 +1,2 @@
 [template]
-sub_templates = ["godot", "leetcode", "nvim-oxi", "pico2w"]
+sub_templates = ["godot", "leetcode", "nvim-oxi", "pico2w", "wgpu"]

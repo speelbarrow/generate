@@ -1,0 +1,10 @@
+{
+  "name": "web",
+  "type": "module",
+  "module": "index.js",
+  "private": true,
+  "scripts": {
+    "build": "bunx --bun wasm-pack build --no-pack --no-typescript --target web --out-dir \"$(pwd)/gen\" ..",
+    "start": "bun run build && ({ sleep 1; open http://localhost:3000; } &) && bun run --watch index.html"
+  }
+}
