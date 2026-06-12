@@ -118,16 +118,23 @@ impl App {
                 {
                     use wasm_bindgen::JsCast;
                     use winit::platform::web::WindowAttributesExtWebSys;
-                    let canvas = wgpu::web_sys::window()
-                        .unwrap()
-                        .document()
-                        .unwrap()
-                        .query_selector("canvas")
-                        .unwrap()
-                        .unwrap()
-                        .dyn_into::<wgpu::web_sys::HtmlCanvasElement>()
-                        .unwrap();
-                    attributes = attributes.with_canvas(Some(canvas));
+                    attributes = attributes.with_canvas(
+                        wgpu::web_sys::window()
+                            .and_then(|window| window.document())
+                            .and_then(|document| match document.query_selector("canvas") {
+                                Ok(ok) => ok,
+                                Err(error) => {
+                                    error!(
+                                        "failed to find canvas in document with error: {:?}",
+                                        error
+                                    );
+                                    None
+                                }
+                            })
+                            .and_then(|canvas| {
+                                canvas.dyn_into::<wgpu::web_sys::HtmlCanvasElement>().ok()
+                            }),
+                    );
                 }
                 attributes
             })?),
