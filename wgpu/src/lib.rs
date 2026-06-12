@@ -1,5 +1,4 @@
-use futures_time::{future::FutureExt, time::Duration};
-use log::{Level, error, warn};
+use log::{Level, error, trace, warn};
 use std::sync::{Arc, OnceLock};
 use wgpu::{
     Device, Instance, InstanceDescriptor, Queue, RequestAdapterOptions, Surface,
@@ -8,17 +7,15 @@ use wgpu::{
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
-    error::OsError,
     event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy, OwnedDisplayHandle},
-    window::{Window, WindowId},
+    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
+    window::{Window, WindowAttributes, WindowId},
 };
 
 #[derive(Debug)]
 enum Event {
     Initialize(Result<State, Box<dyn std::error::Error + Send + Sync>>),
 }
-
 #[derive(Debug)]
 struct State {
     configuration: SurfaceConfiguration,
@@ -29,74 +26,54 @@ struct State {
 }
 impl State {
     async fn initialize(
-        handle: OwnedDisplayHandle,
         proxy: EventLoopProxy<Event>,
-        window: Result<Window, OsError>,
+        surface: Surface<'static>,
+        window: Arc<Window>,
+        instance: Instance,
     ) {
-        if let Err(error) = proxy.send_event(Event::Initialize(
-            async move {
-                let window = Arc::new(window?);
-
-                let instance = Instance::new(InstanceDescriptor::new_with_display_handle_from_env(
-                    Box::new(handle),
-                ));
-
-                /*
-                Sometimes the `surface` is not initially available when requested. This
-                implementation leverages `futures_time` to give the surface a full second to be
-                available, and errors out otherwise.
-                */
-                let Ok(surface) = async {
-                    loop {
-                        if let Ok(surface) = instance.create_surface(window.clone()) {
-                            break surface;
-                        }
-                    }
-                }
-                .timeout(Duration::from_secs(1))
-                .await
-                else {
-                    return Err("failed to create surface".into());
-                };
-
-                let adapter = instance
-                    .request_adapter(&RequestAdapterOptions {
-                        compatible_surface: Some(&surface),
-                        ..Default::default()
-                    })
-                    .await?;
-                let (capabilities, (device, queue), PhysicalSize { height, width }) = (
-                    surface.get_capabilities(&adapter),
-                    adapter.request_device(&Default::default()).await?,
-                    window.inner_size(),
-                );
-                let configuration = SurfaceConfiguration {
-                    alpha_mode: capabilities.alpha_modes[0],
-                    desired_maximum_frame_latency: 2,
-                    format: capabilities.formats[0],
-                    present_mode: capabilities.present_modes[0],
-                    usage: TextureUsages::RENDER_ATTACHMENT,
-                    view_formats: vec![],
-
-                    height,
-                    width,
-                };
-                surface.configure(&device, &configuration);
-
-                Ok(Self {
-                    configuration,
-                    device,
-                    surface,
-                    queue,
-                    window,
+        let event = async move {
+            let adapter = instance
+                .request_adapter(&RequestAdapterOptions {
+                    compatible_surface: Some(&surface),
+                    ..Default::default()
                 })
-            }
-            .await,
-        )) {
+                .await?;
+            let (capabilities, (device, queue), PhysicalSize { height, width }) = (
+                surface.get_capabilities(&adapter),
+                adapter.request_device(&Default::default()).await?,
+                window.inner_size(),
+            );
+            let configuration = SurfaceConfiguration {
+                alpha_mode: capabilities.alpha_modes[0],
+                desired_maximum_frame_latency: 2,
+                format: capabilities.formats[0],
+                present_mode: capabilities.present_modes[0],
+                usage: TextureUsages::RENDER_ATTACHMENT,
+                view_formats: vec![],
+
+                height,
+                width,
+            };
+            surface.configure(&device, &configuration);
+
+            Ok(Self {
+                configuration,
+                device,
+                surface,
+                queue,
+                window,
+            })
+        }
+        .await;
+
+        let trace = format!("{:#?}", event);
+        if let Err(error) = proxy.send_event(Event::Initialize(event)) {
             error!(
                 "failed to send user event to event loop with error:{}\n{:#?}",
                 error, error.0
             );
+        } else {
+            trace!("sent user event to event loop\n{}", trace);
         }
     }
 
@@ -105,7 +82,6 @@ impl State {
         self.window.request_redraw();
     }
 }
-
 struct App {
     #[cfg(not(target_arch = "wasm32"))]
     pool: futures::executor::ThreadPool,
@@ -131,19 +107,50 @@ impl App {
         self.pool.spawn_ok(future);
     }
 
-    fn initialize(&self, event_loop: &ActiveEventLoop) {
+    fn initialize(&self, event_loop: &ActiveEventLoop) -> Result<(), Box<dyn std::error::Error>> {
         let (handle, proxy, window) = (
             event_loop.owned_display_handle(),
             self.proxy.clone(),
-            event_loop.create_window(Default::default()),
+            Arc::new(event_loop.create_window({
+                #[cfg_attr(not(target_arch = "wasm32"), expect(unused_mut))]
+                let mut attributes = WindowAttributes::default();
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::JsCast;
+                    use winit::platform::web::WindowAttributesExtWebSys;
+                    let canvas = wgpu::web_sys::window()
+                        .unwrap()
+                        .document()
+                        .unwrap()
+                        .query_selector("canvas")
+                        .unwrap()
+                        .unwrap()
+                        .dyn_into::<wgpu::web_sys::HtmlCanvasElement>()
+                        .unwrap();
+                    attributes = attributes.with_canvas(Some(canvas));
+                }
+                attributes
+            })?),
         );
-        self.spawn(State::initialize(handle, proxy, window));
+        let instance = Instance::new(InstanceDescriptor::new_with_display_handle_from_env(
+            Box::new(handle),
+        ));
+        self.spawn(State::initialize(
+            proxy,
+            instance.create_surface(window.clone())?,
+            window,
+            instance,
+        ));
+        Ok(())
     }
 }
 impl ApplicationHandler<Event> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.state.get().is_none() {
-            self.initialize(event_loop);
+            if let Err(error) = self.initialize(event_loop) {
+                error!("failed to initialize with error: {}", error);
+                event_loop.exit();
+            }
         }
     }
 
@@ -172,11 +179,17 @@ impl ApplicationHandler<Event> for App {
             WindowEvent::RedrawRequested if let Some(state) = state => state.render(),
             WindowEvent::Resized(..) | WindowEvent::RedrawRequested if state.is_none() => {
                 warn!(
-                    "cannot process window events before the application state has been initialized"
-                )
+                    concat!(
+                        "cannot process window events before the application state has been ",
+                        "initialized\n{:#?}"
+                    ),
+                    event
+                );
+                return;
             }
-            _ => {}
+            _ => return,
         }
+        trace!("handled {:#?}", event);
     }
 }
 
