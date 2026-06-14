@@ -1,7 +1,8 @@
 use log::{Level, error, trace, warn};
 use std::sync::{Arc, OnceLock};
 use wgpu::{
-    Device, Instance, InstanceDescriptor, Queue, RequestAdapterOptions, Surface,
+    Color, CurrentSurfaceTexture, Device, Instance, InstanceDescriptor, LoadOp, Operations, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface,
     SurfaceConfiguration, TextureUsages,
 };
 use winit::{
@@ -77,9 +78,65 @@ impl State {
         }
     }
 
-    fn resize(&mut self, PhysicalSize { height, width }: PhysicalSize<u32>) {}
-    fn render(&mut self) {
+    fn resize(&mut self, PhysicalSize { height, width }: PhysicalSize<u32>) {
+        if height > 0 && width > 0 {
+            self.configuration.height = height;
+            self.configuration.width = width;
+            self.surface.configure(&self.device, &self.configuration);
+        }
+    }
+    fn render(&mut self) -> Result<(), ()> {
         self.window.request_redraw();
+
+        let frame = {
+            let current = self.surface.get_current_texture();
+            if let CurrentSurfaceTexture::Suboptimal(_) | CurrentSurfaceTexture::Outdated = current
+            {
+                self.surface.configure(&self.device, &self.configuration);
+            }
+            match current {
+                CurrentSurfaceTexture::Success(texture)
+                | CurrentSurfaceTexture::Suboptimal(texture) => texture,
+                current @ (CurrentSurfaceTexture::Outdated
+                | CurrentSurfaceTexture::Timeout
+                | CurrentSurfaceTexture::Occluded
+                | CurrentSurfaceTexture::Validation) => {
+                    trace!("bad frame: {:#?}", current);
+                    return Ok(());
+                }
+                CurrentSurfaceTexture::Lost => {
+                    return Err(());
+                }
+            }
+        };
+        let (mut encoder, view) = (
+            self.device.create_command_encoder(&Default::default()),
+            frame.texture.create_view(&Default::default()),
+        );
+        {
+            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.1,
+                            g: 0.2,
+                            b: 0.3,
+                            a: 1.,
+                        }),
+                        store: StoreOp::Store,
+                    },
+                    view: &view,
+
+                    depth_slice: None,
+                    resolve_target: None,
+                })],
+                ..Default::default()
+            });
+        }
+        self.queue.submit(std::iter::once(encoder.finish()));
+        frame.present();
+
+        Ok(())
     }
 }
 struct App {
@@ -118,23 +175,17 @@ impl App {
                 {
                     use wasm_bindgen::JsCast;
                     use winit::platform::web::WindowAttributesExtWebSys;
-                    attributes = attributes.with_canvas(
-                        wgpu::web_sys::window()
-                            .and_then(|window| window.document())
-                            .and_then(|document| match document.query_selector("canvas") {
-                                Ok(ok) => ok,
-                                Err(error) => {
-                                    error!(
-                                        "failed to find canvas in document with error: {:?}",
-                                        error
-                                    );
-                                    None
-                                }
-                            })
-                            .and_then(|canvas| {
-                                canvas.dyn_into::<wgpu::web_sys::HtmlCanvasElement>().ok()
-                            }),
-                    );
+                    if let Some(canvas) = wgpu::web_sys::window()
+                        .and_then(|window| window.document())
+                        .and_then(|document| document.query_selector("canvas").unwrap_or(None))
+                        .and_then(|canvas| {
+                            canvas.dyn_into::<wgpu::web_sys::HtmlCanvasElement>().ok()
+                        })
+                    {
+                        attributes = attributes.with_canvas(Some(canvas));
+                    } else {
+                        return Err("no canvas".into());
+                    }
                 }
                 attributes
             })?),
@@ -162,19 +213,25 @@ impl ApplicationHandler<Event> for App {
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: Event) {
-        if let Err(error) = match event {
-            Event::Initialize(Ok(state)) => self
-                .state
-                .set(state)
-                .map_err(|_| "cannot reinitialize application state".into()),
+        match match event {
+            Event::Initialize(Ok(state)) => {
+                let window = state.window.clone();
+                self.state
+                    .set(state)
+                    .map(|_| window)
+                    .map_err(|_| "cannot reinitialize application state".into())
+            }
             Event::Initialize(Err(error)) => Err(error),
         } {
-            error!(
-                "failed to initialize application state with error: {}",
-                error
-            );
-            event_loop.exit();
-            return;
+            Ok(window) => window.request_redraw(),
+            Err(error) => {
+                error!(
+                    "failed to initialize application state with error: {}",
+                    error
+                );
+                event_loop.exit();
+                return;
+            }
         }
     }
 
@@ -183,7 +240,13 @@ impl ApplicationHandler<Event> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) if let Some(state) = state => state.resize(size),
-            WindowEvent::RedrawRequested if let Some(state) = state => state.render(),
+            WindowEvent::RedrawRequested if let Some(state) = state => {
+                if let Err(_) = state.render() {
+                    error!("lost device");
+                    event_loop.exit();
+                    return;
+                }
+            }
             WindowEvent::Resized(..) | WindowEvent::RedrawRequested if state.is_none() => {
                 warn!(
                     concat!(
@@ -202,7 +265,11 @@ impl ApplicationHandler<Event> for App {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen(start))]
 pub fn main() {
-    const LEVEL: Level = Level::Info;
+    const LEVEL: Level = if cfg!(debug_assertions) {
+        Level::Debug
+    } else {
+        Level::Info
+    };
     cfg_select! {
         target_arch = "wasm32" => {
             console_error_panic_hook::set_once();
