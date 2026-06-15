@@ -42,7 +42,6 @@ if !(arg_names.is_empty() || return_type == "") {
         for values in zipped {
             let value = variable::prompt("Value of `" + values[0] + ": " + values[1] + "`");
             value.trim();
-            value.replace("[", "vec![");
             args += value + ", ";
         }
         args.pop(2);
@@ -50,7 +49,6 @@ if !(arg_names.is_empty() || return_type == "") {
 
         let value = variable::prompt("Expected value (`" + return_type + "`)");
         value.trim();
-        value.replace("[", "vec![");
 
         examples += example + value + ", " + args;
         example_prompt = variable::prompt("Add another example?", false);
