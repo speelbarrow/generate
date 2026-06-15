@@ -21,8 +21,8 @@ enum Event {
 struct State {
     configuration: SurfaceConfiguration,
     device: Device,
-    surface: Surface<'static>,
     queue: Queue,
+    surface: Surface<'static>,
     window: Arc<Window>,
 }
 impl State {
@@ -60,8 +60,8 @@ impl State {
             Ok(Self {
                 configuration,
                 device,
-                surface,
                 queue,
+                surface,
                 window,
             })
         }
