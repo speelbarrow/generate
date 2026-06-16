@@ -1,9 +1,11 @@
 use log::{Level, error, trace, warn};
 use std::sync::{Arc, OnceLock};
 use wgpu::{
-    Color, CurrentSurfaceTexture, Device, Instance, InstanceDescriptor, LoadOp, Operations, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, Surface,
-    SurfaceConfiguration, TextureUsages,
+    BlendState, Color, ColorTargetState, ColorWrites, CurrentSurfaceTexture, Device, Face,
+    FragmentState, FrontFace, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations,
+    PolygonMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, StoreOp,
+    Surface, SurfaceConfiguration, TextureUsages, VertexState, include_wgsl,
 };
 use winit::{
     application::ApplicationHandler,
@@ -21,6 +23,7 @@ enum Event {
 struct State {
     configuration: SurfaceConfiguration,
     device: Device,
+    pipeline: RenderPipeline,
     queue: Queue,
     surface: Surface<'static>,
     window: Arc<Window>,
@@ -44,22 +47,64 @@ impl State {
                 adapter.request_device(&Default::default()).await?,
                 window.inner_size(),
             );
-            let configuration = SurfaceConfiguration {
-                alpha_mode: capabilities.alpha_modes[0],
-                desired_maximum_frame_latency: 2,
-                format: capabilities.formats[0],
-                present_mode: capabilities.present_modes[0],
-                usage: TextureUsages::RENDER_ATTACHMENT,
-                view_formats: vec![],
+            let (configuration, shader) = (
+                SurfaceConfiguration {
+                    alpha_mode: capabilities.alpha_modes[0],
+                    desired_maximum_frame_latency: 2,
+                    format: capabilities.formats[0],
+                    present_mode: capabilities.present_modes[0],
+                    usage: TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: vec![],
 
-                height,
-                width,
-            };
+                    height,
+                    width,
+                },
+                device.create_shader_module(include_wgsl!("shader.wgsl")),
+            );
             surface.configure(&device, &configuration);
+            let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+                cache: None,
+                depth_stencil: None,
+                label: None,
+                layout: Some(&device.create_pipeline_layout(&Default::default())),
+                multisample: MultisampleState {
+                    alpha_to_coverage_enabled: false,
+                    count: 1,
+                    mask: !0,
+                },
+                multiview_mask: None,
+
+                primitive: PrimitiveState {
+                    topology: PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: FrontFace::Ccw,
+                    cull_mode: Some(Face::Back),
+                    polygon_mode: PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                vertex: VertexState {
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                    entry_point: Some("vs_main"),
+                    module: &shader,
+                },
+                fragment: Some(FragmentState {
+                    compilation_options: Default::default(),
+                    entry_point: Some("fs_main"),
+                    module: &shader,
+                    targets: &[Some(ColorTargetState {
+                        blend: Some(BlendState::REPLACE),
+                        format: configuration.format,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+            });
 
             Ok(Self {
                 configuration,
                 device,
+                pipeline,
                 queue,
                 surface,
                 window,
@@ -114,7 +159,7 @@ impl State {
             frame.texture.create_view(&Default::default()),
         );
         {
-            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 color_attachments: &[Some(RenderPassColorAttachment {
                     ops: Operations {
                         load: LoadOp::Clear(Color {
@@ -132,6 +177,8 @@ impl State {
                 })],
                 ..Default::default()
             });
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.draw(0..3, 0..1);
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         frame.present();
