@@ -8,7 +8,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-godot = "0.4.5"
+godot = "0.5.4"
 
 [build-dependencies]
 pathdiff = "0.2.3"
